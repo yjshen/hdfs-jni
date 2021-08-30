@@ -7,6 +7,7 @@ use std::string::String;
 use std::sync::Mutex;
 
 use libc::{c_char, c_int, c_short, c_void, time_t};
+use log::info;
 
 use crate::err::HdfsErr;
 use crate::native::*;
@@ -25,6 +26,12 @@ pub struct RzOptions {
 impl Drop for RzOptions {
     fn drop(&mut self) {
         unsafe { hadoopRzOptionsFree(self.ptr) }
+    }
+}
+
+impl Default for RzOptions {
+    fn default() -> Self {
+        RzOptions::new()
     }
 }
 
@@ -71,6 +78,7 @@ impl<'a> Drop for RzBuffer<'a> {
 
 impl<'a> RzBuffer<'a> {
     /// Get the length of a raw buffer returned from zero-copy read.
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> i32 {
         (unsafe { hadoopRzBufferLength(self.ptr) }) as i32
     }
@@ -126,11 +134,11 @@ impl<'a> Drop for HdfsFileInfoPtr {
 
 impl HdfsFileInfoPtr {
     fn new(ptr: *const hdfsFileInfo) -> HdfsFileInfoPtr {
-        HdfsFileInfoPtr { ptr: ptr, len: 1 }
+        HdfsFileInfoPtr { ptr, len: 1 }
     }
 
     pub fn new_array(ptr: *const hdfsFileInfo, len: i32) -> HdfsFileInfoPtr {
-        HdfsFileInfoPtr { ptr: ptr, len: len }
+        HdfsFileInfoPtr { ptr, len }
     }
 }
 
@@ -157,8 +165,8 @@ impl<'a> FileStatus<'a> {
     #[inline]
     fn from_array(raw: Rc<HdfsFileInfoPtr>, idx: u32) -> FileStatus<'a> {
         FileStatus {
-            raw: raw,
-            idx: idx,
+            raw,
+            idx,
             _marker: PhantomData,
         }
     }
@@ -212,6 +220,7 @@ impl<'a> FileStatus<'a> {
 
     /// Get the length of this file, in bytes.
     #[inline]
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         unsafe { &*self.ptr() }.mSize as usize
     }
@@ -256,8 +265,8 @@ impl<'a> HdfsFs<'a> {
     #[inline]
     fn new(url: String, raw: *const hdfsFS) -> HdfsFs<'a> {
         HdfsFs {
-            url: url,
-            raw: raw,
+            url,
+            raw,
             _marker: PhantomData,
         }
     }
@@ -288,7 +297,7 @@ impl<'a> HdfsFs<'a> {
             Ok(HdfsFile {
                 fs: self,
                 path: path.to_owned(),
-                file: file,
+                file,
             })
         }
     }
@@ -352,7 +361,7 @@ impl<'a> HdfsFs<'a> {
             Ok(HdfsFile {
                 fs: self,
                 path: path.to_owned(),
-                file: file,
+                file,
             })
         }
     }
@@ -403,11 +412,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Checks if a given path exsits on the filesystem
     pub fn exist(&self, path: &str) -> bool {
-        if unsafe { hdfsExists(self.raw, str_to_chars(path)) } == 0 {
-            true
-        } else {
-            false
-        }
+        unsafe { hdfsExists(self.raw, str_to_chars(path)) == 0 }
     }
 
     /// Get hostnames where a particular block (determined by
@@ -424,7 +429,7 @@ impl<'a> HdfsFs<'a> {
             unsafe { hdfsGetHosts(self.raw, str_to_chars(path), start as i64, length as i64) };
 
         if !ptr.is_null() {
-            Ok(BlockHosts { ptr: ptr })
+            Ok(BlockHosts { ptr })
         } else {
             Err(HdfsErr::Unknown)
         }
@@ -464,7 +469,7 @@ impl<'a> HdfsFs<'a> {
             Ok(HdfsFile {
                 fs: self,
                 path: path.to_owned(),
-                file: file,
+                file,
             })
         }
     }
@@ -689,6 +694,12 @@ pub struct HdfsFsCache<'a> {
     fs_map: Mutex<HashMap<String, HdfsFs<'a>>>,
 }
 
+impl<'a> Default for HdfsFsCache<'a> {
+    fn default() -> Self {
+        HdfsFsCache::new()
+    }
+}
+
 impl<'a> HdfsFsCache<'a> {
     pub fn new() -> HdfsFsCache<'a> {
         HdfsFsCache {
@@ -701,7 +712,7 @@ impl<'a> HdfsFsCache<'a> {
         match Url::parse(path) {
             Ok(url) => {
                 if url.scheme() == LOCAL_FS_SCHEME {
-                    return Ok("file:///".to_string());
+                    Ok("file:///".to_string())
                 } else {
                     let mut uri_builder = String::new();
                     if url.host().is_some() {
@@ -712,7 +723,7 @@ impl<'a> HdfsFsCache<'a> {
                             uri_builder.push_str(&(format!(":{}", url.port().unwrap())));
                         }
 
-                        return Ok(uri_builder);
+                        Ok(uri_builder)
                     } else {
                         Err(HdfsErr::InvalidUrl(path.to_string()))
                     }
@@ -736,7 +747,7 @@ impl<'a> HdfsFsCache<'a> {
             };
 
             if hdfs_fs.is_null() {
-                return Err(HdfsErr::CannotConnectToNameNode(namenode_uri.clone()));
+                return Err(HdfsErr::CannotConnectToNameNode(namenode_uri));
             }
 
             map.insert(

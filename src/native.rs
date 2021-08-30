@@ -865,6 +865,12 @@ pub struct MiniDfsConf {
     short_circuit_enabled: c_uchar,
 }
 
+impl Default for MiniDfsConf {
+    fn default() -> Self {
+        MiniDfsConf::new()
+    }
+}
+
 impl MiniDfsConf {
     pub fn new() -> MiniDfsConf {
         MiniDfsConf {
@@ -883,11 +889,7 @@ impl MiniDfsConf {
 
     /// The cluster will be formatted prior to startup if TRUE
     pub fn do_format(&self) -> bool {
-        if self.do_format != 0 {
-            true
-        } else {
-            false
-        }
+        self.do_format != 0
     }
 
     /// Set TRUE in order to enable webhdfs in MiniDfsCluster
@@ -898,11 +900,7 @@ impl MiniDfsConf {
 
     /// webhdfs in MiniDfsCluster will be available if TRUE
     pub fn web_hdfs_enabled(&self) -> bool {
-        if self.webhdfs_enabled != 0 {
-            true
-        } else {
-            false
-        }
+        self.webhdfs_enabled != 0
     }
 
     /// Set http port of the namenode in MiniDfsCluster
@@ -924,11 +922,7 @@ impl MiniDfsConf {
 
     /// short circuit will be available if TRUE
     pub fn short_circuit_enabled(&self) -> bool {
-        if self.short_circuit_enabled != 0 {
-            true
-        } else {
-            false
-        }
+        self.short_circuit_enabled != 0
     }
 }
 
