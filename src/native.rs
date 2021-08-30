@@ -2,9 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use libc::{
-    c_char, c_int, c_short, c_uchar, c_void, int16_t, int32_t, int64_t, size_t, time_t, uint16_t,
-};
+use libc::{c_char, c_int, c_short, c_uchar, c_void, size_t, time_t};
 
 /// Opaque Pointer of hdfsFS
 pub enum hdfsFS {}
@@ -22,13 +20,13 @@ pub enum hadoopRzOptions {}
 pub enum hadoopRzBuffer {}
 
 /// size of data for read/write io ops
-pub type tSize = int32_t;
+pub type tSize = i32;
 /// time type in seconds
 pub type tTime = time_t;
 /// offset within the file
-pub type tOffset = int64_t;
+pub type tOffset = i64;
 /// port
-pub type tPort = uint16_t;
+pub type tPort = u16;
 
 #[repr(C)]
 pub enum tObjectKind {
@@ -116,7 +114,7 @@ extern "C" {
     ///
     /// #### Return
     /// Return the number of remote bytes read.
-    pub fn hdfsReadStatisticsGetRemoteBytesRead(stats: *const hdfsReadStatistics) -> int64_t;
+    pub fn hdfsReadStatisticsGetRemoteBytesRead(stats: *const hdfsReadStatistics) -> i64;
 
     /// Free some HDFS read statistics.
     ///
@@ -134,11 +132,7 @@ extern "C" {
     ///
     /// #### Return
     /// Returns a handle to the filesystem or ```NULL``` on error.  
-    pub fn hdfsConnectAsUser(
-        host: *const c_char,
-        uint16_t: u16,
-        user: *const c_char,
-    ) -> *const hdfsFS;
+    pub fn hdfsConnectAsUser(host: *const c_char, u16: u16, user: *const c_char) -> *const hdfsFS;
 
     /// Connect to a hdfs file system.
     ///
@@ -150,7 +144,7 @@ extern "C" {
     ///
     /// #### Return
     /// Returns a handle to the filesystem or ```NULL``` on error.
-    pub fn hdfsConnect(host: *const c_char, uint16_t: tPort) -> *const hdfsFS;
+    pub fn hdfsConnect(host: *const c_char, u16: tPort) -> *const hdfsFS;
 
     /// Connect to an hdfs file system.
     ///
@@ -166,7 +160,7 @@ extern "C" {
     /// Returns a handle to the filesystem or ```NULL``` on error.
     pub fn hdfsConnectAsUserNewInstance(
         host: *const c_char,
-        uint16_t: tPort,
+        u16: tPort,
         user: *const c_char,
     ) -> *const hdfsFS;
 
@@ -181,7 +175,7 @@ extern "C" {
     ///
     /// #### Return
     /// Returns a handle to the filesystem or ```NULL``` on error.
-    pub fn hdfsConnectNewInstance(host: *const c_char, uint16_t: tPort) -> *const hdfsFS;
+    pub fn hdfsConnectNewInstance(host: *const c_char, u16: tPort) -> *const hdfsFS;
 
     /// Connect to HDFS using the parameters defined by the builder.
     ///
@@ -231,7 +225,7 @@ extern "C" {
     /// #### Params
     /// * bld - The HDFS builder
     /// * port - The port.
-    pub fn hdfsBuilderSetNameNodePort(bld: *mut hdfsBuilder, port: uint16_t);
+    pub fn hdfsBuilderSetNameNodePort(bld: *mut hdfsBuilder, port: u16);
 
     /// Set the username to use when connecting to the HDFS cluster.
     ///
@@ -300,7 +294,7 @@ extern "C" {
     /// #### Return
     /// 0 on success; nonzero error code otherwise.
     /// Failure to find the key is not an error.
-    pub fn hdfsConfGetInt(key: *const c_char, val: *mut int32_t) -> c_int;
+    pub fn hdfsConfGetInt(key: *const c_char, val: *mut i32) -> c_int;
 
     /// Free a configuration string found with hdfsConfGetStr.
     ///
@@ -347,7 +341,7 @@ extern "C" {
         flags: c_int,
         bufferSize: c_int,
         replication: c_short,
-        blocksize: int32_t,
+        blocksize: i32,
     ) -> *const hdfsFile;
 
     /// Close an open file.
@@ -600,11 +594,7 @@ extern "C" {
     ///
     /// #### Return
     /// Returns 0 on success, -1 on error.
-    pub fn hdfsSetReplication(
-        fs: *const hdfsFS,
-        path: *const c_char,
-        replication: int16_t,
-    ) -> c_int;
+    pub fn hdfsSetReplication(fs: *const hdfsFS, path: *const c_char, replication: i16) -> c_int;
 
     /// Get list of files/directories for a given directory-path.
     /// hdfsFreeFileInfo should be called to deallocate memory.
@@ -825,7 +815,7 @@ extern "C" {
     pub fn hadoopReadZero(
         file: *const hdfsFile,
         opts: *const hadoopRzOptions,
-        maxLength: int32_t,
+        maxLength: i32,
     ) -> *const hadoopRzBuffer;
 
     /// Determine the length of the buffer returned from readZero.
@@ -835,7 +825,7 @@ extern "C" {
     ///
     /// #### Return
     /// the length of the buffer.
-    pub fn hadoopRzBufferLength(buffer: *const hadoopRzBuffer) -> int32_t;
+    pub fn hadoopRzBufferLength(buffer: *const hadoopRzBuffer) -> i32;
 
     /// Get a pointer to the raw buffer returned from readZero.
     ///

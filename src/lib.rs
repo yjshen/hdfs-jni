@@ -87,10 +87,8 @@
 //! };
 //! ```
 
-extern crate libc;
 #[macro_use]
 extern crate log;
-extern crate url;
 
 mod err;
 pub use crate::err::HdfsErr;

@@ -6,12 +6,12 @@ use std::slice;
 use std::string::String;
 use std::sync::Mutex;
 
-use libc::{c_char, c_int, c_short, c_void, int16_t, int32_t, int64_t, time_t};
-use url::{SchemeType, UrlParser};
+use libc::{c_char, c_int, c_short, c_void, time_t};
 
 use crate::err::HdfsErr;
 use crate::native::*;
 use crate::util::{bool_to_c_int, chars_to_str, str_to_chars};
+use url::Url;
 
 const O_RDONLY: c_int = 0;
 const O_WRONLY: c_int = 1;
@@ -275,7 +275,7 @@ impl<'a> HdfsFs<'a> {
     }
 
     /// Open a file for append
-    pub fn append(&self, path: &str) -> Result<HdfsFile, HdfsErr> {
+    pub fn append(&self, path: &str) -> Result<HdfsFile<'_>, HdfsErr> {
         if !self.exist(path) {
             return Err(HdfsErr::FileNotFound(path.to_owned()));
         }
@@ -310,12 +310,16 @@ impl<'a> HdfsFs<'a> {
     }
 
     #[inline]
-    pub fn create(&self, path: &str) -> Result<HdfsFile, HdfsErr> {
+    pub fn create(&self, path: &str) -> Result<HdfsFile<'_>, HdfsErr> {
         self.create_with_params(path, false, 0, 0, 0)
     }
 
     #[inline]
-    pub fn create_with_overwrite(&self, path: &str, overwrite: bool) -> Result<HdfsFile, HdfsErr> {
+    pub fn create_with_overwrite(
+        &self,
+        path: &str,
+        overwrite: bool,
+    ) -> Result<HdfsFile<'_>, HdfsErr> {
         self.create_with_params(path, overwrite, 0, 0, 0)
     }
 
@@ -326,7 +330,7 @@ impl<'a> HdfsFs<'a> {
         buf_size: i32,
         replica_num: i16,
         block_size: i32,
-    ) -> Result<HdfsFile, HdfsErr> {
+    ) -> Result<HdfsFile<'_>, HdfsErr> {
         if !overwrite && self.exist(path) {
             return Err(HdfsErr::FileAlreadyExists(path.to_owned()));
         }
@@ -338,7 +342,7 @@ impl<'a> HdfsFs<'a> {
                 O_WRONLY,
                 buf_size as c_int,
                 replica_num as c_short,
-                block_size as int32_t,
+                block_size as i32,
             )
         };
 
@@ -416,14 +420,8 @@ impl<'a> HdfsFs<'a> {
         start: usize,
         length: usize,
     ) -> Result<BlockHosts, HdfsErr> {
-        let ptr = unsafe {
-            hdfsGetHosts(
-                self.raw,
-                str_to_chars(path),
-                start as int64_t,
-                length as int64_t,
-            )
-        };
+        let ptr =
+            unsafe { hdfsGetHosts(self.raw, str_to_chars(path), start as i64, length as i64) };
 
         if !ptr.is_null() {
             Ok(BlockHosts { ptr: ptr })
@@ -443,12 +441,12 @@ impl<'a> HdfsFs<'a> {
 
     /// open a file to read
     #[inline]
-    pub fn open(&self, path: &str) -> Result<HdfsFile, HdfsErr> {
+    pub fn open(&self, path: &str) -> Result<HdfsFile<'_>, HdfsErr> {
         self.open_with_bufsize(path, 0)
     }
 
     /// open a file to read with a buffer size
-    pub fn open_with_bufsize(&self, path: &str, buf_size: i32) -> Result<HdfsFile, HdfsErr> {
+    pub fn open_with_bufsize(&self, path: &str, buf_size: i32) -> Result<HdfsFile<'_>, HdfsErr> {
         let file = unsafe {
             hdfsOpenFile(
                 self.raw,
@@ -473,7 +471,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Set the replication of the specified file to the supplied value
     pub fn set_replication(&self, path: &str, num: i16) -> Result<bool, HdfsErr> {
-        let res = unsafe { hdfsSetReplication(self.raw, str_to_chars(path), num as int16_t) };
+        let res = unsafe { hdfsSetReplication(self.raw, str_to_chars(path), num as i16) };
 
         if res == 0 {
             Ok(true)
@@ -504,7 +502,7 @@ impl<'a> HdfsFs<'a> {
         }
     }
 
-    pub fn list_status(&self, path: &str) -> Result<Vec<FileStatus>, HdfsErr> {
+    pub fn list_status(&self, path: &str) -> Result<Vec<FileStatus<'_>>, HdfsErr> {
         let mut entry_num: c_int = 0;
 
         let ptr = unsafe { hdfsListDirectory(self.raw, str_to_chars(path), &mut entry_num) };
@@ -523,7 +521,7 @@ impl<'a> HdfsFs<'a> {
         Ok(list)
     }
 
-    pub fn get_file_status(&self, path: &str) -> Result<FileStatus, HdfsErr> {
+    pub fn get_file_status(&self, path: &str) -> Result<FileStatus<'_>, HdfsErr> {
         let ptr = unsafe { hdfsGetPathInfo(self.raw, str_to_chars(path)) };
 
         if ptr.is_null() {
@@ -644,7 +642,7 @@ impl<'a> HdfsFile<'a> {
     /// (mmap) read.
     pub fn read_zc(&'a self, opts: &RzOptions, max_len: i32) -> Result<RzBuffer<'a>, HdfsErr> {
         let buf: *const hadoopRzBuffer =
-            unsafe { hadoopReadZero(self.file, opts.ptr, max_len as int32_t) };
+            unsafe { hadoopReadZero(self.file, opts.ptr, max_len as i32) };
 
         if !buf.is_null() {
             Ok(RzBuffer {
@@ -680,16 +678,7 @@ impl<'a> HdfsFile<'a> {
     }
 }
 
-static LOCAL_FS_SCHEME: &'static str = "file";
-
-/// for HDFS URL scheme (i.e., hdfs://)
-fn hdfs_scheme_handler(scheme: &str) -> SchemeType {
-    match scheme {
-        "file" => SchemeType::FileLike,
-        "hdfs" => SchemeType::Relative(50070),
-        _ => panic!("Unsupported scheme: {}", scheme),
-    }
-}
+static LOCAL_FS_SCHEME: &str = "file";
 
 /// HdfsFsCache which caches HdfsFs instances.  
 ///
@@ -698,31 +687,26 @@ fn hdfs_scheme_handler(scheme: &str) -> SchemeType {
 /// caching initialized HdfsFs instances and returning them.  
 pub struct HdfsFsCache<'a> {
     fs_map: Mutex<HashMap<String, HdfsFs<'a>>>,
-    url_parser: UrlParser<'a>,
 }
 
 impl<'a> HdfsFsCache<'a> {
     pub fn new() -> HdfsFsCache<'a> {
-        let mut url_parser = UrlParser::new();
-        url_parser.scheme_type_mapper(hdfs_scheme_handler);
-
         HdfsFsCache {
             fs_map: Mutex::new(HashMap::new()),
-            url_parser: url_parser,
         }
     }
 
     #[inline]
     fn get_namenode_uri(&self, path: &str) -> Result<String, HdfsErr> {
-        match self.url_parser.parse(path) {
+        match Url::parse(path) {
             Ok(url) => {
-                if &url.scheme == LOCAL_FS_SCHEME {
+                if url.scheme() == LOCAL_FS_SCHEME {
                     return Ok("file:///".to_string());
                 } else {
                     let mut uri_builder = String::new();
                     if url.host().is_some() {
                         uri_builder
-                            .push_str(&(format!("{}://{}", &url.scheme, url.host().unwrap())));
+                            .push_str(&(format!("{}://{}", &url.scheme(), url.host().unwrap())));
 
                         if url.port().is_some() {
                             uri_builder.push_str(&(format!(":{}", url.port().unwrap())));
@@ -837,7 +821,11 @@ mod test {
         assert_eq!(sub_dir_num, list.len());
 
         list.sort_by(|a, b| Ord::cmp(a.name(), b.name()));
-        for (expected, name) in izip!(expected_list, list.iter().map(|status| status.name())) {
+
+        for (expected, name) in expected_list
+            .iter()
+            .zip(list.iter().map(|status| status.name()))
+        {
             assert_eq!(expected, name);
         }
 

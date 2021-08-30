@@ -36,7 +36,12 @@ impl HdfsUtil {
     /// * ```src``` - The path of source file.
     /// * ```dstFS``` - The handle to destination filesystem.
     /// * ```dst``` - The path of destination file.
-    pub fn copy(src_fs: &HdfsFs, src: &str, dst_fs: &HdfsFs, dst: &str) -> Result<bool, HdfsErr> {
+    pub fn copy(
+        src_fs: &HdfsFs<'_>,
+        src: &str,
+        dst_fs: &HdfsFs<'_>,
+        dst: &str,
+    ) -> Result<bool, HdfsErr> {
         let res = unsafe {
             hdfsCopy(
                 src_fs.raw(),
@@ -60,7 +65,12 @@ impl HdfsUtil {
     /// * ```src``` - The path of source file.
     /// * ```dstFS``` - The handle to destination filesystem.
     /// * ```dst``` - The path of destination file.
-    pub fn mv(src_fs: &HdfsFs, src: &str, dst_fs: &HdfsFs, dst: &str) -> Result<bool, HdfsErr> {
+    pub fn mv(
+        src_fs: &HdfsFs<'_>,
+        src: &str,
+        dst_fs: &HdfsFs<'_>,
+        dst: &str,
+    ) -> Result<bool, HdfsErr> {
         let res = unsafe {
             hdfsMove(
                 src_fs.raw(),
