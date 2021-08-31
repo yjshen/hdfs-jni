@@ -39,7 +39,7 @@ impl MiniDFS {
     }
 
     pub fn wait_for_clusterup(&self) -> bool {
-        unsafe { nmdWaitClusterUp(self.cluster) == 0}
+        unsafe { nmdWaitClusterUp(self.cluster) == 0 }
     }
 
     pub fn namenode_port(&self) -> Option<i32> {
@@ -66,6 +66,6 @@ impl MiniDFS {
 
     #[allow(clippy::not_unsafe_ptr_arg_deref)]
     pub fn set_hdfs_builder(&self, builder: *mut hdfsBuilder) -> bool {
-         unsafe { nmdConfigureHdfsBuilder(self.cluster, builder) == 0 }
+        unsafe { nmdConfigureHdfsBuilder(self.cluster, builder) == 0 }
     }
 }
