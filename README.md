@@ -4,4 +4,4 @@ Rust binding for libhdfs. Based on [hdfs-rs](https://github.com/hyunsik/hdfs-rs.
 
 TODOs:
 
-- [] Enable test based on Docker & Github Action
+- [ ] Enable test based on Docker & Github Action
