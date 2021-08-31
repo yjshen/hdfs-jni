@@ -33,4 +33,5 @@ fn main() {
     }
 
     minidfs_config.compile("libminidfs.a");
+    println!("cargo:rerun-if-changed=src/libhdfs/native_mini_dfs.c");
 }
