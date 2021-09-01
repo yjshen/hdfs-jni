@@ -46,14 +46,12 @@ COPY --from=cacher /tmp/hdfs-jni/target target
 
 #ARG RELEASE_FLAG=--release
 
-RUN bash -l -c 'echo export LD_LIBRARY_PATH="/usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server" >> /etc/bash.bashrc'
-RUN bash -l -c 'echo export LIBRARY_PATH="/usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server" >> /etc/bash.bashrc'
-RUN bash -l -c 'echo export CLASSPATH="$($HADOOP_HOME/bin/hadoop classpath --glob)" >> /etc/bash.bashrc'
+ENV LD_LIBRARY_PATH /usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server
+ENV LIBRARY_PATH /usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server
 
 ENV RUST_LOG=info
 ENV RUST_BACKTRACE=full
 
 # force build.rs to run to generate configure_me code.
 ENV FORCE_REBUILD='true'
-RUN RUSTFLAGS='-L /usr/local/hadoop/lib/native -L /tmp/hdfs-jni/target/debug/deps -L /usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server/libjvm.so' cargo test -vv
-#RUN cargo test --verbose
+RUN export CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath --glob) && cargo test -vv
