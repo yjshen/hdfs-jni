@@ -40,12 +40,14 @@ RUN cargo chef cook $RELEASE_FLAG --recipe-path recipe.json
 FROM base as builder
 RUN mkdir /tmp/hdfs-jni/src
 ADD Cargo.toml .
+ADD build.rs .
 COPY src ./src/
 COPY --from=cacher /tmp/hdfs-jni/target target
 
 #ARG RELEASE_FLAG=--release
 
 RUN bash -l -c 'echo export LD_LIBRARY_PATH="/usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server" >> /etc/bash.bashrc'
+RUN bash -l -c 'echo export LIBRARY_PATH="/usr/local/hadoop/lib/native:/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server" >> /etc/bash.bashrc'
 RUN bash -l -c 'echo export CLASSPATH="$($HADOOP_HOME/bin/hadoop classpath --glob)" >> /etc/bash.bashrc'
 
 ENV RUST_LOG=info
@@ -53,6 +55,5 @@ ENV RUST_BACKTRACE=full
 
 # force build.rs to run to generate configure_me code.
 ENV FORCE_REBUILD='true'
-RUN cargo build
-
-RUN cargo test
+RUN RUSTFLAGS='-L /usr/local/hadoop/lib/native -L /tmp/hdfs-jni/target/debug/deps -L /usr/lib/jvm/adoptopenjdk-8-hotspot-amd64/jre/lib/amd64/server/libjvm.so' cargo test -vv
+#RUN cargo test --verbose

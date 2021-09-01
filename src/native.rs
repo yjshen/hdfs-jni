@@ -67,6 +67,7 @@ pub struct hdfsFileInfo {
     pub mLastAccess: tTime,
 }
 
+#[link(name="hdfs")]
 extern "C" {
 
     /// Determine if a file is open for read.
@@ -925,6 +926,7 @@ impl MiniDfsConf {
     }
 }
 
+#[link(name="minidfs")]
 extern "C" {
     /// Create a NativeMiniDfsCluster
     ///

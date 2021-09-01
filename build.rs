@@ -1,10 +1,19 @@
 use std::env;
 
 fn main() {
+    match env::var("JAVA_HOME") {
+        Ok(val) => {
+            println!("cargo:rustc-link-search=all={}/jre/lib/amd64/server", val);
+        }
+        Err(e) => {
+            panic!("HADOOP_HOME shell environment must be set: {}", e);
+        }
+    }
+
     // for libhdfs.a
     match env::var("HADOOP_HOME") {
         Ok(val) => {
-            println!("cargo:rustc-link-search=native={}/lib/native", val);
+            println!("cargo:rustc-link-search=all={}/lib/native", val);
         }
         Err(e) => {
             panic!("HADOOP_HOME shell environment must be set: {}", e);
@@ -32,6 +41,5 @@ fn main() {
         }
     }
 
-    minidfs_config.compile("libminidfs.a");
-    println!("cargo:rerun-if-changed=src/libhdfs/native_mini_dfs.c");
+    minidfs_config.compile("minidfs");
 }
