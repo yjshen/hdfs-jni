@@ -20,6 +20,9 @@
 set -e
 
 . ./dev/build-set-env.sh
-docker build --progress=plain -t rust-base:$HJ_VERSION -f dev/docker/rust.dockerfile .
-docker build --progress=plain -t hdfs-base:$HJ_VERSION -f dev/docker/hdfs.dockerfile .
-docker build --progress=plain -t hdfs-jni:$HJ_VERSION -f dev/docker/hdfs-jni.dockerfile .
+
+# Use --progress=plain for detailed, non scrolled docker output
+
+docker build -t rust-base:$HJ_VERSION -f dev/docker/rust.dockerfile .
+docker build -t hdfs-base:$HJ_VERSION -f dev/docker/hdfs.dockerfile .
+docker build -t hdfs-jni:$HJ_VERSION -f dev/docker/hdfs-jni.dockerfile .
