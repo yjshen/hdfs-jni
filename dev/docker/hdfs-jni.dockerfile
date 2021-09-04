@@ -22,10 +22,8 @@
 # as a mounted directory.
 
 #ARG RELEASE_FLAG=--release
-FROM hdfs-base:0.1.0 AS base
+FROM yijieshen/hdfs26:0.2.0 AS base
 WORKDIR /tmp/hdfs-jni
-RUN apt-get -y install cmake
-RUN cargo install cargo-chef --version 0.1.23
 
 FROM base as planner
 RUN mkdir /tmp/hdfs-jni/src
@@ -54,4 +52,4 @@ ENV RUST_BACKTRACE=full
 
 # force build.rs to run to generate configure_me code.
 ENV FORCE_REBUILD='true'
-RUN export CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath --glob) && cargo test -vv
+RUN export CLASSPATH=$($HADOOP_HOME/bin/hadoop classpath --glob) && RUST_LOG=info cargo test -vv

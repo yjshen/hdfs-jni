@@ -700,6 +700,25 @@ impl<'a> Default for HdfsFsCache<'a> {
     }
 }
 
+struct HostPort {
+    host: String,
+    port: u16,
+}
+
+enum NNScheme {
+    Local,
+    Remote(HostPort),
+}
+
+impl ToString for NNScheme {
+    fn to_string(&self) -> String {
+        match self {
+            NNScheme::Local => "file:///".to_string(),
+            NNScheme::Remote(hp) => format!("{}:{}", hp.host, hp.port)
+        }
+    }
+}
+
 impl<'a> HdfsFsCache<'a> {
     pub fn new() -> HdfsFsCache<'a> {
         HdfsFsCache {
@@ -708,22 +727,17 @@ impl<'a> HdfsFsCache<'a> {
     }
 
     #[inline]
-    fn get_namenode_uri(&self, path: &str) -> Result<String, HdfsErr> {
+    fn get_namenode_uri(&self, path: &str) -> Result<NNScheme, HdfsErr> {
         match Url::parse(path) {
             Ok(url) => {
                 if url.scheme() == LOCAL_FS_SCHEME {
-                    Ok("file:///".to_string())
+                    Ok(NNScheme::Local)
                 } else {
-                    let mut uri_builder = String::new();
-                    if url.host().is_some() {
-                        uri_builder
-                            .push_str(&(format!("{}://{}", &url.scheme(), url.host().unwrap())));
-
-                        if url.port().is_some() {
-                            uri_builder.push_str(&(format!(":{}", url.port().unwrap())));
-                        }
-
-                        Ok(uri_builder)
+                    if url.host().is_some() && url.port().is_some(){
+                        Ok(NNScheme::Remote(HostPort {
+                            host: format!("{}://{}", &url.scheme(), url.host().unwrap()),
+                            port: url.port().unwrap(),
+                        }))
                     } else {
                         Err(HdfsErr::InvalidUrl(path.to_string()))
                     }
@@ -734,29 +748,38 @@ impl<'a> HdfsFsCache<'a> {
     }
 
     pub fn get(&mut self, path: &str) -> Result<HdfsFs<'a>, HdfsErr> {
-        let namenode_uri = self.get_namenode_uri(path)?;
+        let host_port = self.get_namenode_uri(path)?;
 
         let mut map = self.fs_map.lock().unwrap();
 
-        if !map.contains_key(&namenode_uri) {
+        if !map.contains_key(&host_port.to_string()) {
             let hdfs_fs = unsafe {
                 let hdfs_builder = hdfsNewBuilder();
-                hdfsBuilderSetNameNode(hdfs_builder, str_to_chars(&namenode_uri));
-                info!("Connecting to Namenode ({})", &namenode_uri);
+
+                match host_port {
+                    NNScheme::Local => {}, //NO-OP
+                    NNScheme::Remote(ref hp) => {
+                        hdfsBuilderSetNameNode(hdfs_builder, str_to_chars(&*hp.host));
+                        hdfsBuilderSetNameNodePort(hdfs_builder, hp.port);
+                    }
+                }
+
+                eprintln!("Connecting to NameNode ({})", &host_port.to_string());
                 hdfsBuilderConnect(hdfs_builder)
             };
 
             if hdfs_fs.is_null() {
-                return Err(HdfsErr::CannotConnectToNameNode(namenode_uri));
+                return Err(HdfsErr::CannotConnectToNameNode(host_port.to_string()));
             }
 
             map.insert(
-                namenode_uri.clone(),
-                HdfsFs::new(namenode_uri.clone(), hdfs_fs),
+                host_port.to_string(),
+                HdfsFs::new(host_port.to_string(), hdfs_fs),
             );
+            eprintln!("Connected to NameNode ({})", &host_port.to_string());
         }
 
-        Ok(map.get(&namenode_uri).unwrap().clone())
+        Ok(map.get(&host_port.to_string()).unwrap().clone())
     }
 }
 
@@ -784,7 +807,7 @@ mod test {
             cache.borrow_mut().get("file:/blah").ok().unwrap().url
         );
         let test_path = format!("hdfs://localhost:{}/users/test", port);
-        println!("Trying to get {}", &test_path);
+        eprintln!("Trying to get {}", &test_path);
         assert_eq!(
             minidfs_addr,
             cache.borrow_mut().get(&test_path).ok().unwrap().url
@@ -805,7 +828,7 @@ mod test {
         assert!(opened_file.close().is_ok());
 
         match fs.mkdir("/dir1") {
-            Ok(_) => println!("/dir1 created"),
+            Ok(_) => eprintln!("/dir1 created"),
             Err(_) => panic!("Couldn't create /dir1 directory"),
         };
 
@@ -823,7 +846,7 @@ mod test {
             expected_list.push(format!("hdfs://localhost:{}/dir1/{}", port, x));
 
             match fs.mkdir(&filename) {
-                Ok(_) => println!("/dir1.x created"),
+                Ok(_) => eprintln!("/dir1.x created"),
                 Err(_) => panic!("Couldn't create /dir1 directory"),
             };
         }

@@ -7,8 +7,9 @@ use crate::err::HdfsErr;
 use crate::native::*;
 
 pub fn str_to_chars(s: &str) -> *const c_char {
-    let c_str = CString::new(s.as_bytes()).unwrap();
+    let c_str = CString::new(s).unwrap();
     c_str.as_ptr()
+    // CString::new(s.as_bytes()).unwrap().as_ptr()
 }
 
 pub fn chars_to_str<'a>(chars: *const c_char) -> &'a str {
