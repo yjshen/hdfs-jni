@@ -1,15 +1,17 @@
-use libc::{c_char, c_int};
-use std::ffi::{CStr, CString};
+use libc::c_char;
+use std::ffi::CStr;
 use std::str;
 
 use crate::dfs::HdfsFs;
 use crate::err::HdfsErr;
 use crate::native::*;
 
-pub fn str_to_chars(s: &str) -> *const c_char {
-    let c_str = CString::new(s).unwrap();
-    c_str.as_ptr()
-    // CString::new(s.as_bytes()).unwrap().as_ptr()
+#[macro_export]
+macro_rules! to_raw {
+    ($str:expr) => {{
+        let c_str = std::ffi::CString::new($str).unwrap();
+        c_str.into_raw()
+    }};
 }
 
 pub fn chars_to_str<'a>(chars: *const c_char) -> &'a str {
@@ -17,12 +19,15 @@ pub fn chars_to_str<'a>(chars: *const c_char) -> &'a str {
     str::from_utf8(slice).unwrap()
 }
 
-pub fn bool_to_c_int(val: bool) -> c_int {
-    if val {
-        1
-    } else {
-        0
-    }
+#[macro_export]
+macro_rules! b2i {
+    ($b:expr) => {{
+        if $b {
+            1
+        } else {
+            0
+        }
+    }};
 }
 
 /// Hdfs Utility
@@ -43,14 +48,7 @@ impl HdfsUtil {
         dst_fs: &HdfsFs<'_>,
         dst: &str,
     ) -> Result<bool, HdfsErr> {
-        let res = unsafe {
-            hdfsCopy(
-                src_fs.raw(),
-                str_to_chars(src),
-                dst_fs.raw(),
-                str_to_chars(dst),
-            )
-        };
+        let res = unsafe { hdfsCopy(src_fs.raw(), to_raw!(src), dst_fs.raw(), to_raw!(dst)) };
 
         if res == 0 {
             Ok(true)
@@ -72,14 +70,7 @@ impl HdfsUtil {
         dst_fs: &HdfsFs<'_>,
         dst: &str,
     ) -> Result<bool, HdfsErr> {
-        let res = unsafe {
-            hdfsMove(
-                src_fs.raw(),
-                str_to_chars(src),
-                dst_fs.raw(),
-                str_to_chars(dst),
-            )
-        };
+        let res = unsafe { hdfsMove(src_fs.raw(), to_raw!(src), dst_fs.raw(), to_raw!(dst)) };
 
         if res == 0 {
             Ok(true)

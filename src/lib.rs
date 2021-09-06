@@ -97,8 +97,5 @@ pub mod native;
 mod dfs;
 pub use crate::dfs::*;
 
-/// Mini HDFS Cluster for easily building unit tests
-pub mod minidfs;
-
 mod util;
 pub use crate::util::HdfsUtil;

@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 
-use libc::{c_char, c_int, c_short, c_uchar, c_void, size_t, time_t};
+use libc::{c_char, c_int, c_short, c_void, size_t, time_t};
 
 /// Opaque Pointer of hdfsFS
 pub enum hdfsFS {}
@@ -67,7 +67,7 @@ pub struct hdfsFileInfo {
     pub mLastAccess: tTime,
 }
 
-#[link(name="hdfs")]
+#[link(name = "hdfs3", kind = "dylib")]
 extern "C" {
 
     /// Determine if a file is open for read.
@@ -846,154 +846,4 @@ extern "C" {
     /// #### Return
     /// The buffer to release.
     pub fn hadoopRzBufferFree(file: *const hdfsFile, buffer: *const hadoopRzBuffer);
-}
-
-/// Opaque Pointer for NativeMiniDfsCluster
-pub enum NativeMiniDfsCluster {}
-
-/// Represents a configuration to use for creating a Native MiniDFSCluster
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct MiniDfsConf {
-    /// Nonzero if the cluster should be formatted prior to startup.
-    do_format: c_uchar,
-    /// Whether or not to enable webhdfs in MiniDfsCluster
-    webhdfs_enabled: c_uchar,
-    /// The http port of the namenode in MiniDfsCluster
-    namenode_http_port: c_int,
-    /// Nonzero if we should configure short circuit.
-    short_circuit_enabled: c_uchar,
-}
-
-impl Default for MiniDfsConf {
-    fn default() -> Self {
-        MiniDfsConf::new()
-    }
-}
-
-impl MiniDfsConf {
-    pub fn new() -> MiniDfsConf {
-        MiniDfsConf {
-            do_format: 1,
-            webhdfs_enabled: 0,
-            namenode_http_port: 0,
-            short_circuit_enabled: 0,
-        }
-    }
-
-    /// Set TRUE if the cluster should be formatted prior to startup
-    pub fn set_do_format(&mut self, on: bool) -> &mut MiniDfsConf {
-        self.do_format = if on { 1 } else { 0 };
-        self
-    }
-
-    /// The cluster will be formatted prior to startup if TRUE
-    pub fn do_format(&self) -> bool {
-        self.do_format != 0
-    }
-
-    /// Set TRUE in order to enable webhdfs in MiniDfsCluster
-    pub fn set_web_hdfs(&mut self, enable: bool) -> &mut MiniDfsConf {
-        self.webhdfs_enabled = if enable { 1 } else { 0 };
-        self
-    }
-
-    /// webhdfs in MiniDfsCluster will be available if TRUE
-    pub fn web_hdfs_enabled(&self) -> bool {
-        self.webhdfs_enabled != 0
-    }
-
-    /// Set http port of the namenode in MiniDfsCluster
-    pub fn set_http_port(&mut self, port: i32) -> &mut MiniDfsConf {
-        self.namenode_http_port = port as c_int;
-        self
-    }
-
-    /// The http port of the namenode in MiniDfsCluster
-    pub fn http_port(&self) -> i32 {
-        self.namenode_http_port
-    }
-
-    /// Set TRUE if we should configure short circuit.
-    pub fn set_short_circuit(&mut self, enable: bool) -> &mut MiniDfsConf {
-        self.short_circuit_enabled = if enable { 1 } else { 0 };
-        self
-    }
-
-    /// short circuit will be available if TRUE
-    pub fn short_circuit_enabled(&self) -> bool {
-        self.short_circuit_enabled != 0
-    }
-}
-
-#[link(name="minidfs")]
-extern "C" {
-    /// Create a NativeMiniDfsCluster
-    ///
-    /// #### Params
-    /// * ```conf``` - (inout) The cluster configuration
-    ///
-    /// #### Return
-    /// * Return a ```NativeMiniDfsCluster````, or a ```NULL``` pointer on error.
-    pub fn nmdCreate(conf: *const MiniDfsConf) -> *mut NativeMiniDfsCluster;
-
-    /// Wait until a MiniDFSCluster comes out of safe mode.
-    ///
-    /// #### Params
-    /// * ```cl``` - The cluster
-    ///
-    /// #### Return
-    /// * 0 on success; a non-zero error code if the cluster fails to
-    /// come out of safe mode.
-    pub fn nmdWaitClusterUp(cl: *const NativeMiniDfsCluster) -> c_int;
-
-    /// Shut down a NativeMiniDFS cluster
-    ///
-    /// #### Params
-    /// * ```cl``` - The cluster
-    ///
-    /// #### Return
-    /// * 0 on success; a non-zero error code if an exception is thrown.
-    pub fn nmdShutdown(cl: *const NativeMiniDfsCluster) -> c_int;
-
-    /// Destroy a Native MiniDFSCluster
-    ///
-    /// #### Params
-    /// * ```cl``` - The cluster to destroy
-    pub fn nmdFree(cl: *const NativeMiniDfsCluster) -> c_void;
-
-    /// Get the port that's in use by the given (non-HA) nativeMiniDfs
-    ///
-    /// #### Params
-    /// * ```cl``` - The initialized NativeMiniDfsCluster
-    ///
-    /// #### Return
-    /// the port, or a negative error code
-    pub fn nmdGetNameNodePort(cl: *const NativeMiniDfsCluster) -> c_int;
-
-    /// Get the http address that's in use by the given (non-HA) nativeMiniDfs
-    ///
-    /// #### Params
-    /// * ```cl``` - The initialized NativeMiniDfsCluster
-    /// * ```port``` - Used to capture the http port of the NameNode
-    /// of the NativeMiniDfsCluster
-    /// * hostName  Used to capture the http hostname of the NameNode
-    /// of the NativeMiniDfsCluster
-    pub fn nmdGetNameNodeHttpAddress(
-        cl: *const NativeMiniDfsCluster,
-        port: *mut c_int,
-        hostName: *mut *mut c_char,
-    ) -> c_int;
-
-    /// Configure the HDFS builder appropriately to connect to this cluster.
-    ///
-    /// #### Params
-    /// * ```bld``` - The hdfs builder
-    ///
-    /// #### Return
-    /// the port, or a negative error code
-    pub fn nmdConfigureHdfsBuilder(
-        cl: *const NativeMiniDfsCluster,
-        bld: *const hdfsBuilder,
-    ) -> c_int;
 }
