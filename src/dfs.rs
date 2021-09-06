@@ -7,11 +7,11 @@ use std::string::String;
 use std::sync::Mutex;
 
 use libc::{c_char, c_int, c_short, c_void, time_t};
-use log::info;
 
+use crate::{b2i, to_raw};
 use crate::err::HdfsErr;
 use crate::native::*;
-use crate::util::{bool_to_c_int, chars_to_str, str_to_chars};
+use crate::util::chars_to_str;
 use url::Url;
 
 const O_RDONLY: c_int = 0;
@@ -43,7 +43,7 @@ impl RzOptions {
     }
 
     pub fn skip_checksum(&self, skip: bool) -> Result<bool, HdfsErr> {
-        let res = unsafe { hadoopRzOptionsSetSkipChecksum(self.ptr, bool_to_c_int(skip)) };
+        let res = unsafe { hadoopRzOptionsSetSkipChecksum(self.ptr, b2i!(skip)) };
 
         if res == 0 {
             Ok(true)
@@ -53,7 +53,7 @@ impl RzOptions {
     }
 
     pub fn set_bytebuffer_pool(&self, class_name: &str) -> Result<bool, HdfsErr> {
-        let res = unsafe { hadoopRzOptionsSetByteBufferPool(self.ptr, str_to_chars(class_name)) };
+        let res = unsafe { hadoopRzOptionsSetByteBufferPool(self.ptr, to_raw!(class_name)) };
 
         if res == 0 {
             Ok(true)
@@ -289,7 +289,7 @@ impl<'a> HdfsFs<'a> {
             return Err(HdfsErr::FileNotFound(path.to_owned()));
         }
 
-        let file = unsafe { hdfsOpenFile(self.raw, str_to_chars(path), O_APPEND, 0, 0, 0) };
+        let file = unsafe { hdfsOpenFile(self.raw, to_raw!(path), O_APPEND, 0, 0, 0) };
 
         if file.is_null() {
             Err(HdfsErr::Unknown)
@@ -304,16 +304,16 @@ impl<'a> HdfsFs<'a> {
 
     /// set permission
     pub fn chmod(&self, path: &str, mode: i16) -> bool {
-        (unsafe { hdfsChmod(self.raw, str_to_chars(path), mode as c_short) }) == 0
+        (unsafe { hdfsChmod(self.raw, to_raw!(path), mode as c_short) }) == 0
     }
 
     pub fn chown(&self, path: &str, owner: &str, group: &str) -> bool {
         (unsafe {
             hdfsChown(
                 self.raw,
-                str_to_chars(path),
-                str_to_chars(owner),
-                str_to_chars(group),
+                to_raw!(path),
+                to_raw!(owner),
+                to_raw!(group),
             )
         }) == 0
     }
@@ -347,7 +347,7 @@ impl<'a> HdfsFs<'a> {
         let file = unsafe {
             hdfsOpenFile(
                 self.raw,
-                str_to_chars(path),
+                to_raw!(path),
                 O_WRONLY,
                 buf_size as c_int,
                 replica_num as c_short,
@@ -379,7 +379,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Get the default blocksize at the filesystem indicated by a given path.
     pub fn block_size(&self, path: &str) -> Result<usize, HdfsErr> {
-        let block_sz = unsafe { hdfsGetDefaultBlockSizeAtPath(self.raw, str_to_chars(path)) };
+        let block_sz = unsafe { hdfsGetDefaultBlockSizeAtPath(self.raw, to_raw!(path)) };
 
         if block_sz > 0 {
             Ok(block_sz as usize)
@@ -401,7 +401,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Delete file.
     pub fn delete(&self, path: &str, recursive: bool) -> Result<bool, HdfsErr> {
-        let res = unsafe { hdfsDelete(self.raw, str_to_chars(path), recursive as c_int) };
+        let res = unsafe { hdfsDelete(self.raw, to_raw!(path), recursive as c_int) };
 
         if res == 0 {
             Ok(true)
@@ -412,7 +412,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Checks if a given path exsits on the filesystem
     pub fn exist(&self, path: &str) -> bool {
-        unsafe { hdfsExists(self.raw, str_to_chars(path)) == 0 }
+        unsafe { hdfsExists(self.raw, to_raw!(path)) == 0 }
     }
 
     /// Get hostnames where a particular block (determined by
@@ -426,7 +426,7 @@ impl<'a> HdfsFs<'a> {
         length: usize,
     ) -> Result<BlockHosts, HdfsErr> {
         let ptr =
-            unsafe { hdfsGetHosts(self.raw, str_to_chars(path), start as i64, length as i64) };
+            unsafe { hdfsGetHosts(self.raw, to_raw!(path), start as i64, length as i64) };
 
         if !ptr.is_null() {
             Ok(BlockHosts { ptr })
@@ -437,7 +437,7 @@ impl<'a> HdfsFs<'a> {
 
     /// create a directory
     pub fn mkdir(&self, path: &str) -> Result<bool, HdfsErr> {
-        if unsafe { hdfsCreateDirectory(self.raw, str_to_chars(path)) } == 0 {
+        if unsafe { hdfsCreateDirectory(self.raw, to_raw!(path)) } == 0 {
             Ok(true)
         } else {
             Err(HdfsErr::Unknown)
@@ -455,7 +455,7 @@ impl<'a> HdfsFs<'a> {
         let file = unsafe {
             hdfsOpenFile(
                 self.raw,
-                str_to_chars(path),
+                to_raw!(path),
                 O_RDONLY,
                 buf_size as c_int,
                 0,
@@ -476,7 +476,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Set the replication of the specified file to the supplied value
     pub fn set_replication(&self, path: &str, num: i16) -> Result<bool, HdfsErr> {
-        let res = unsafe { hdfsSetReplication(self.raw, str_to_chars(path), num as i16) };
+        let res = unsafe { hdfsSetReplication(self.raw, to_raw!(path), num as i16) };
 
         if res == 0 {
             Ok(true)
@@ -487,7 +487,7 @@ impl<'a> HdfsFs<'a> {
 
     /// Rename file.
     pub fn rename(&self, old_path: &str, new_path: &str) -> Result<bool, HdfsErr> {
-        let res = unsafe { hdfsRename(self.raw, str_to_chars(old_path), str_to_chars(new_path)) };
+        let res = unsafe { hdfsRename(self.raw, to_raw!(old_path), to_raw!(new_path)) };
 
         if res == 0 {
             Ok(true)
@@ -510,7 +510,7 @@ impl<'a> HdfsFs<'a> {
     pub fn list_status(&self, path: &str) -> Result<Vec<FileStatus<'_>>, HdfsErr> {
         let mut entry_num: c_int = 0;
 
-        let ptr = unsafe { hdfsListDirectory(self.raw, str_to_chars(path), &mut entry_num) };
+        let ptr = unsafe { hdfsListDirectory(self.raw, to_raw!(path), &mut entry_num) };
 
         if ptr.is_null() {
             return Err(HdfsErr::Unknown);
@@ -527,7 +527,7 @@ impl<'a> HdfsFs<'a> {
     }
 
     pub fn get_file_status(&self, path: &str) -> Result<FileStatus<'_>, HdfsErr> {
-        let ptr = unsafe { hdfsGetPathInfo(self.raw, str_to_chars(path)) };
+        let ptr = unsafe { hdfsGetPathInfo(self.raw, to_raw!(path)) };
 
         if ptr.is_null() {
             Err(HdfsErr::Unknown)
@@ -759,7 +759,7 @@ impl<'a> HdfsFsCache<'a> {
                 match host_port {
                     NNScheme::Local => {}, //NO-OP
                     NNScheme::Remote(ref hp) => {
-                        hdfsBuilderSetNameNode(hdfs_builder, str_to_chars(&*hp.host));
+                        hdfsBuilderSetNameNode(hdfs_builder, to_raw!(&*hp.host));
                         hdfsBuilderSetNameNodePort(hdfs_builder, hp.port);
                     }
                 }
